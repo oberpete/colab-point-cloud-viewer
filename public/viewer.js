@@ -44,7 +44,7 @@ export function initSync(viewer, THREE) {
     if (now - lastSent < 900) return;
     lastSent = now;
 
-    const camera = viewer?.scene?.camera;
+    const camera = viewer?.scene?.getActiveCamera?.();
     if (!camera) return;
 
     const pos = camera.position;

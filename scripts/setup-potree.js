@@ -7,13 +7,15 @@
  * Re-run:   delete public/potree/ and run again
  */
 
-const { execSync } = require('child_process');
-const fs = require('fs');
-const path = require('path');
+import { execSync } from 'child_process';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = fileURLToPath(new URL('.', import.meta.url));
 
 const ROOT = path.join(__dirname, '..');
 const VENDOR = path.join(ROOT, 'vendor');
-const EXTRACT_DIR = path.join(VENDOR, 'potree-develop');
 const PUBLIC_POTREE = path.join(ROOT, 'public', 'potree');
 const ZIP = path.join(VENDOR, 'potree-develop.zip');
 const POTREE_ZIP_URL = 'https://github.com/potree/potree/archive/refs/heads/develop.zip';
@@ -36,17 +38,15 @@ run(`curl -fsSL "${POTREE_ZIP_URL}" -o "${ZIP}"`);
 
 console.log('\n[2/4] Extracting…');
 run(`unzip -q "${ZIP}" -d "${VENDOR}"`);
-// GitHub archive extracts to potree-develop/
+
 const extracted = path.join(VENDOR, 'potree-develop');
 if (!fs.existsSync(extracted)) {
-  // fallback: GitHub sometimes names it differently
   const dirs = fs.readdirSync(VENDOR).filter(d => d.startsWith('potree'));
   if (!dirs.length) { console.error('Could not find extracted Potree dir'); process.exit(1); }
   fs.renameSync(path.join(VENDOR, dirs[0]), extracted);
 }
 
 console.log('\n[3/4] Installing Potree deps + building (this takes ~2-3 min)…');
-// postinstall in potree's package.json runs `gulp build pack` automatically
 run('npm install', { cwd: extracted });
 
 console.log('\n[4/4] Copying build artifacts to public/potree/…');
