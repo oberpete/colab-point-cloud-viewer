@@ -1,0 +1,13 @@
+{
+  "name": "colab-point-cloud-viewer",
+  "version": "1.0.0",
+  "description": "Collaborative real-time point cloud viewer — Cyclomedia take-home",
+  "scripts": {
+    "setup": "node scripts/setup-potree.js",
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "ws": "^8.16.0"
+  }
+}
