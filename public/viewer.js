@@ -4,7 +4,9 @@
  */
 
 export function initSync(viewer, THREE) {
-  const ws = new WebSocket(`ws://${location.host}`);
+  // wss:// when the page itself is served over https — plain ws:// is blocked as mixed content
+  const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const ws = new WebSocket(`${wsProtocol}//${location.host}`);
 
   // id assigned by the server on connection
   let myId = null;
