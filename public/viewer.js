@@ -31,6 +31,7 @@ export function initSync(viewer, THREE) {
       case 'init':
         myId = msg.id;
         msg.peers.forEach(p => upsertPeer(p.id, p.camera, p.lastSeen));
+        renderPeerList(); // show "You" immediately, even if there are no other peers yet
         break;
       case 'peer_update':
         upsertPeer(msg.id, msg.camera, msg.lastSeen);
@@ -171,6 +172,21 @@ export function initSync(viewer, THREE) {
   function renderPeerList() {
     const list = document.getElementById('peer-list');
     list.innerHTML = '';
+
+    if (myId) {
+      const hex = `#${peerColor(myId).getHexString()}`;
+      const li = document.createElement('li');
+      li.className = 'peer-self';
+      li.innerHTML =
+        `<span class="peer-dot" style="background:${hex}"></span>` +
+        `<span class="peer-info"><span class="peer-name">You&nbsp;<code>${myId.slice(0, 6)}</code></span></span>`;
+      list.appendChild(li);
+    }
+
+    const header = document.createElement('li');
+    header.className = 'peer-section';
+    header.textContent = 'Other viewers';
+    list.appendChild(header);
 
     if (peerObjects.size === 0) {
       const li = document.createElement('li');
