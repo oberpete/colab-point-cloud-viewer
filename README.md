@@ -1,6 +1,6 @@
 # Collaborative Point Cloud Viewer
 
-Multiple browser tabs load the SoFi Stadium COPC point cloud and share camera position + view direction in real time.
+A 3D viewer for point cloud data (a LiDAR scan of SoFi Stadium) that multiple people can explore together. Move your camera and everyone else viewing the same scene sees, live, where you are and what direction you're looking.
 
 ## Live demo
 
@@ -34,6 +34,14 @@ npm run typecheck
 Open the app (locally at `http://localhost:3000`, or the live demo above) in two tabs. The SoFi cloud streams from S3 (~2 GB), first tiles appear in ~10–30 s. Move the camera in one tab — a view cone appears in the other within ~1 second. Close a tab — the cone disappears.
 
 ## Architecture
+
+**Components:**
+
+- **Potree viewer** (one per browser tab) — loads and renders the COPC point cloud, owns the 3D scene and camera.
+- **`viewer.js`** (one per browser tab) — reads the local camera's position/direction from Potree, sends it to the server, and renders peer cones from the state it receives back.
+- **Node.js server** (`server.ts`) — serves the static frontend via Express, and tracks connected peers + their last known camera state.
+
+All three browser-side and server-side parts only ever talk to each other over a single WebSocket connection per tab — there's no separate REST API or polling. The diagram below shows that exchange for two tabs:
 
 ```
 Browser Tab A                  Node.js server               Browser Tab B
