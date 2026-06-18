@@ -14,7 +14,9 @@ export function initSync(viewer, THREE) {
   // Map<peerId, THREE.Group> — one group per peer, updated in-place (no duplicates)
   const peerObjects = new Map();
 
-  // Map<peerId, timestamp> — last time a camera update was received
+  // Map<peerId, timestamp> — server-reported time of each peer's last camera update.
+  // Comes from the server (not Date.now() on receipt) so a freshly loaded page shows
+  // a peer's real last-active time instead of "just now" for everyone in the init list.
   const lastSeen = new Map();
 
   // ── WebSocket handlers ──────────────────────────────────────────────────────
@@ -28,10 +30,10 @@ export function initSync(viewer, THREE) {
     switch (msg.type) {
       case 'init':
         myId = msg.id;
-        msg.peers.forEach(p => upsertPeer(p.id, p.camera));
+        msg.peers.forEach(p => upsertPeer(p.id, p.camera, p.lastSeen));
         break;
       case 'peer_update':
-        upsertPeer(msg.id, msg.camera);
+        upsertPeer(msg.id, msg.camera, msg.lastSeen);
         break;
       case 'peer_leave':
         removePeer(msg.id);
@@ -102,10 +104,10 @@ export function initSync(viewer, THREE) {
 
   const FORWARD = new THREE.Vector3(0, 0, 1);
 
-  function upsertPeer(id, camera) {
+  function upsertPeer(id, camera, lastSeenTs) {
     if (!camera) return;
 
-    lastSeen.set(id, Date.now());
+    lastSeen.set(id, lastSeenTs);
 
     if (!peerObjects.has(id)) {
       const obj = buildPeerObject(id);

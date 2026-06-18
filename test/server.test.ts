@@ -90,6 +90,7 @@ test('camera update from one client is broadcast to others', async () => {
   assert.equal(msg.type, 'peer_update');
   if (msg.type !== 'peer_update') return;
   assert.deepEqual(msg.camera, camera);
+  assert.ok(typeof msg.lastSeen === 'number' && msg.lastSeen <= Date.now());
 
   await a.close();
   await b.close();
@@ -110,6 +111,37 @@ test('new joiner receives existing camera state in init', async () => {
   if (init.type !== 'init') return;
   assert.equal(init.peers.length, 1);
   assert.deepEqual(init.peers[0].camera, camera);
+
+  await a.close();
+  await b.close();
+});
+
+test("new joiner sees a peer's true last-seen time, not its own join time", async () => {
+  const a = await createClient();
+  await a.next(); // init
+
+  const camera: CameraState = { position: { x: 1, y: 1, z: 1 }, direction: { x: 0, y: 0, z: -1 } };
+  const sentAt = Date.now();
+  a.send({ type: 'camera', camera });
+  await new Promise((r) => setTimeout(r, 200)); // A goes idle after this — simulates a stale peer
+
+  const b = await createClient();
+  const init = await b.next();
+  const joinedAt = Date.now();
+
+  assert.equal(init.type, 'init');
+  if (init.type !== 'init') return;
+
+  const { lastSeen } = init.peers[0];
+  // lastSeen should land near when A actually sent its update, not near B's join time
+  assert.ok(
+    Math.abs(lastSeen - sentAt) < 50,
+    `expected lastSeen (${lastSeen}) close to send time (${sentAt})`
+  );
+  assert.ok(
+    joinedAt - lastSeen >= 150,
+    `expected lastSeen to reflect real staleness, not B's join time (${joinedAt})`
+  );
 
   await a.close();
   await b.close();
