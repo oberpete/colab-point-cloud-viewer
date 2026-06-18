@@ -12,6 +12,9 @@ export function initSync(viewer, THREE) {
   // Map<peerId, THREE.Group> — one group per peer, updated in-place (no duplicates)
   const peerObjects = new Map();
 
+  // Map<peerId, timestamp> — last time a camera update was received
+  const lastSeen = new Map();
+
   // ── WebSocket handlers ──────────────────────────────────────────────────────
 
   ws.addEventListener('open', () => setConnected(true));
@@ -40,6 +43,7 @@ export function initSync(viewer, THREE) {
 
   setInterval(() => {
     if (ws.readyState !== WebSocket.OPEN) return;
+    if (document.hidden) return; // pause heartbeat while tab is backgrounded — makes peer staleness deterministic instead of depending on browser timer throttling
     const now = Date.now();
     if (now - lastSent < 900) return;
     lastSent = now;
@@ -99,6 +103,8 @@ export function initSync(viewer, THREE) {
   function upsertPeer(id, camera) {
     if (!camera) return;
 
+    lastSeen.set(id, Date.now());
+
     if (!peerObjects.has(id)) {
       const obj = buildPeerObject(id);
       viewer.scene.scene.add(obj);
@@ -134,6 +140,7 @@ export function initSync(viewer, THREE) {
       child.material?.dispose();
     });
     peerObjects.delete(id);
+    lastSeen.delete(id);
     renderPeerList();
   }
 
@@ -142,6 +149,19 @@ export function initSync(viewer, THREE) {
   function setConnected(connected) {
     document.getElementById('conn-dot').className = `dot ${connected ? 'connected' : 'disconnected'}`;
     document.getElementById('conn-label').textContent = connected ? 'Connected' : 'Disconnected';
+  }
+
+  // Peers are greyed out in the list once their heartbeat goes stale
+  // (e.g. their tab is backgrounded) but before the WebSocket actually closes.
+  const INACTIVE_THRESHOLD_MS = 5000;
+
+  // "just now" / 10s chunks / whole minutes — deliberately coarse so the
+  // overlay doesn't need to re-render every second to stay accurate.
+  function formatLastSeen(ts) {
+    const diffSec = Math.floor((Date.now() - ts) / 1000);
+    if (diffSec < 5) return 'just now';
+    if (diffSec < 60) return `${Math.ceil(diffSec / 10) * 10}s ago`;
+    return `${Math.ceil(diffSec / 60)}m ago`;
   }
 
   function renderPeerList() {
@@ -157,14 +177,21 @@ export function initSync(viewer, THREE) {
     }
 
     for (const id of peerObjects.keys()) {
+      const ts = lastSeen.get(id);
+      const stale = Date.now() - ts >= INACTIVE_THRESHOLD_MS;
       const hex = `#${peerColor(id).getHexString()}`;
       const li = document.createElement('li');
+      li.className = stale ? 'peer-inactive' : '';
       li.innerHTML =
         `<span class="peer-dot" style="background:${hex}"></span>` +
-        `Viewer&nbsp;<code>${id.slice(0, 6)}</code>`;
+        `<span class="peer-info">` +
+        `<span class="peer-name">Viewer&nbsp;<code>${id.slice(0, 6)}</code></span>` +
+        `<span class="peer-seen">${formatLastSeen(ts)}</span>` +
+        `</span>`;
       list.appendChild(li);
     }
   }
 
   renderPeerList();
+  setInterval(renderPeerList, 5000); // matches the 10s display granularity — no need to re-render every second
 }

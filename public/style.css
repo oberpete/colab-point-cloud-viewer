@@ -48,7 +48,7 @@
 
 #peer-list li {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 7px;
 }
 
@@ -57,6 +57,22 @@
   height: 10px;
   border-radius: 50%;
   flex-shrink: 0;
+  margin-top: 4px;
+}
+
+.peer-info {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.peer-seen {
+  font-size: 10px;
+  color: #6b7280;
+}
+
+.peer-inactive {
+  opacity: 0.45;
 }
 
 .peer-empty {

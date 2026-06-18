@@ -50,4 +50,8 @@ Clear separation between rendering and collaboration — Potree owns the 3D scen
 
 **Scope:** No bundler, no framework, no auth. Native ES modules are enough for this size. `viewer.js` stays plain JS since Potree has no TypeScript types; the server and shared protocol types (`shared/types.ts`) are fully typed.
 
+**Stretch goals implemented:**
+- **Stable peer color** — each peer's cone and list entry use a deterministic HSL color hashed from their UUID, so the color stays consistent across reconnects.
+- **Peer list overlay with last-seen** — the top-right panel lists every connected peer with their color, ID, and a coarse last-seen indicator (`just now`, then 10s chunks, then whole minutes). The camera heartbeat pauses when a tab is backgrounded (Page Visibility API), so an idle peer's entry visibly greys out and its timestamp starts climbing *before* the WebSocket actually disconnects — distinguishing "connected but inactive" from "actively viewing."
+
 **AI usage:** Used Claude Code to scaffold the project, work out the Three.js cone geometry, and debug a Potree API mismatch (`viewer.scene.camera` vs `viewer.scene.getActiveCamera()`). Verified manually that elevation coloring applies on load, cones move in place without duplicating, and closing a tab cleans up immediately.
