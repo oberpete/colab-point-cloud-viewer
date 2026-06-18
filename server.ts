@@ -12,7 +12,13 @@ const __dirname = fileURLToPath(new URL('.', import.meta.url));
 interface Peer {
   ws: WebSocket;
   camera: CameraState | null;
+  lastBroadcast: number; // Date.now() of the last camera update we broadcast for this peer
 }
+
+// Matches the client's own ~1Hz send rate (see viewer.js). This is defense-in-depth:
+// a buggy or malicious client could ignore its own throttle and flood the server,
+// and every camera message is fanned out to all other peers (O(n) per message).
+const THROTTLE_MS = 900;
 
 export function createServer() {
   const app = express();
@@ -25,7 +31,7 @@ export function createServer() {
 
   wss.on('connection', (ws) => {
     const id = randomUUID();
-    peers.set(id, { ws, camera: null });
+    peers.set(id, { ws, camera: null, lastBroadcast: 0 });
 
     send(ws, { type: 'init', id, peers: activePeers(id) });
 
@@ -34,7 +40,14 @@ export function createServer() {
       try { msg = JSON.parse(raw.toString()); } catch { return; }
 
       if (msg.type === 'camera') {
-        peers.get(id)!.camera = msg.camera;
+        const peer = peers.get(id)!;
+        peer.camera = msg.camera; // always keep the latest state, even if this update isn't broadcast
+
+        // Throttle: drop this update if we broadcast for this peer too recently.
+        const now = Date.now();
+        if (now - peer.lastBroadcast < THROTTLE_MS) return;
+        peer.lastBroadcast = now;
+
         broadcast({ type: 'peer_update', id, camera: msg.camera }, id);
       }
     });
